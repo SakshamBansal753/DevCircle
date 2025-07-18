@@ -11,10 +11,13 @@ from typing_extensions import deprecated
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 app=Flask(__name__)
 
+
 CORS(app)
 USER_FILE="User.json"
 Task_FILE="Task.json"
 SECRET_KEY="It's a secret Brother"
+EMAIL="Your Email"
+APP_PASSWORD="Your Pass"
 def load_user():
     with open(USER_FILE,"r") as file:
         return json.load(file)
@@ -167,6 +170,33 @@ def delete():
     except jwt.ExpiredSignatureError:
         return jsonify({"error": "Token expired"}), 401
 
+def send_emails():
+    users=load_user()
+    Tasks=load_task()
+    for username, user_data in Tasks.items():
+        second_email = user_data["email"]
+        for task in user_data["Tasks"]:
+            today = datetime.now().date()
+            task_date = datetime.strptime(task["Date"], "%Y-%m-%d").date()
+            if (task_date - today).days == 1:
+                for email in task["emails"]:
+                    with smtplib.SMTP("smtp.gmail.com", 587) as connection:
+                        connection.starttls()
+                        connection.login(EMAIL, APP_PASSWORD)
+                        connection.sendmail(
+                            from_addr=EMAIL,
+                            to_addrs=email,
+                            msg=f"""Subject: Expiry of Task {task["Task"]}\n\n\n
+    
+            This is a reminder that your project with {second_email} is due tomorrow.
+            If completed, kindly remove it from the task list.
+    
+            Regards,  
+            Team DevCircle
+            """
+                        )
+
 
 if __name__ == "__main__":
+    send_emails()
     app.run(debug=True)
